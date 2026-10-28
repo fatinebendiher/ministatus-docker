@@ -36,6 +36,84 @@ jobs:
           output: trivy-report.json
           exit-code: "0"
 
+      - name: Convertir JSON en HTML propre
+        if: always()
+        run: |
+          # Installation d'un convertisseur simple et génération du fichier HTML
+          npm install -g ajv-cli > /dev/null 2>&1
+          # Création d'une page HTML stylisée à partir du JSON Trivy
+          cat << 'EOF' > generate_html.py
+          import json
+          import html
+
+          with open('trivy-report.json', 'r') as f:
+              data = json.load(f)
+
+          html_content = """<!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="utf-8">
+              <title>Rapport de Sécurité Trivy</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; color: #333; }
+                  h1 { color: #2c3e50; }
+                  .summary { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+                  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                  th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+                  th { background-color: #2980b9; color: white; }
+                  .CRITICAL { color: #c0392b; font-weight: bold; }
+                  .HIGH { color: #d35400; font-weight: bold; }
+                  .MEDIUM { color: #f39c12; font-weight: bold; }
+                  .LOW { color: #27ae60; font-weight: bold; }
+              </style>
+          </head>
+          <body>
+              <h1>Rapport de Sécurité - Trivy Scan</h1>
+              <div class="summary">
+                  <h2>Image scannée : ministatus:ci</h2>
+              </div>
+              <table>
+                  <tr>
+                      <th>Bibliothèque / Package</th>
+                      <th>Vulnérabilité (CVE)</th>
+                      <th>Sévérité</th>
+                      <th>Version Installée</th>
+                      <th>Version Corrigée</th>
+                  </tr>
+          """
+
+          results = data.get('Results', [])
+          for result in results:
+              vulns = result.get('Vulnerabilities', [])
+              if vulns:
+                  for v in vulns:
+                      pkg = html.escape(v.get('PkgName', ''))
+                      vid = html.escape(v.get('VulnerabilityID', ''))
+                      sev = html.escape(v.get('Severity', ''))
+                      installed = html.escape(v.get('InstalledVersion', ''))
+                      fixed = html.escape(v.get('FixedVersion', 'Non corrigée'))
+                      
+                      html_content += f"""
+                      <tr>
+                          <td>{pkg}</td>
+                          <td>{vid}</td>
+                          <td class="{sev}">{sev}</td>
+                          <td>{installed}</td>
+                          <td>{fixed}</td>
+                      </tr>
+                      """
+
+          html_content += """
+              </table>
+          </body>
+          </html>
+          """
+
+          with open('trivy-report.html', 'w') as f:
+              f.write(html_content)
+          EOF
+          python3 generate_html.py
+
       - name: Resume dans la page du run
         if: always()
         run: |
@@ -45,12 +123,14 @@ jobs:
             echo "- $s: $n" >> "$GITHUB_STEP_SUMMARY"
           done
 
-      - name: Publier les rapports
+      - name: Publier les rapports (JSON et HTML)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: trivy-reports
-          path: trivy-report.json
+          path: |
+            trivy-report.json
+            trivy-report.html
 
       - name: Quality gate (HIGH et CRITICAL)
         uses: aquasecurity/trivy-action@master
