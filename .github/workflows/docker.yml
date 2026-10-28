@@ -36,12 +36,12 @@ jobs:
           output: trivy-report.json
           exit-code: "0"
 
-      - name: Rapport Trivy (HTML)
+      - name: Rapport Trivy (HTML alternatif sécurisé)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.IMAGE}}`:ci
+          image-ref: ${{ env.IMAGE }}:ci
           format: template
-          template: "https://github.com/aquasecurity/trivy/raw/main/contrib/html.tpl"
+          template: "@$HOME/.local/bin/trivy-bin/contrib/html.tpl"
           output: trivy-report.html
           exit-code: "0"
 
