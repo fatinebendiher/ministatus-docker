@@ -36,15 +36,6 @@ jobs:
           output: trivy-report.json
           exit-code: "0"
 
-      - name: Rapport Trivy (HTML alternatif sécurisé)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.IMAGE }}:ci
-          format: template
-          template: "@$HOME/.local/bin/trivy-bin/contrib/html.tpl"
-          output: trivy-report.html
-          exit-code: "0"
-
       - name: Resume dans la page du run
         if: always()
         run: |
@@ -59,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: trivy-reports
-          path: trivy-report.*
+          path: trivy-report.json
 
       - name: Quality gate (HIGH et CRITICAL)
         uses: aquasecurity/trivy-action@master
